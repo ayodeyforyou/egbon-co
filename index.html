@@ -2747,11 +2747,13 @@
       // ===== DATA STORE =====
       let bookings = [];
       const ADMIN_PASS = "egbon2025"; // Change this password!
+      let adminSessionId = null; // Store session token instead of password
       let pendingAction = null;
 
       // Initialize bookings with error handling
       try {
         bookings = JSON.parse(localStorage.getItem("egbon_bookings") || "[]");
+        adminSessionId = localStorage.getItem("egbon_sessionId");
       } catch (error) {
         console.error("Error loading bookings from localStorage:", error);
         bookings = [];
@@ -2767,6 +2769,35 @@
           );
         }
       }
+
+      // Verify admin session on page load
+      function verifyAdminSession() {
+        if (adminSessionId) {
+          try {
+            fetch("/api/admin/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId: adminSessionId })
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (!data.success) {
+                  adminSessionId = null;
+                  localStorage.removeItem("egbon_sessionId");
+                }
+              })
+              .catch((error) => {
+                console.error("Error verifying session:", error);
+                adminSessionId = null;
+              });
+          } catch (error) {
+            console.error("Error in verifyAdminSession:", error);
+          }
+        }
+      }
+
+      // Call verification on page load
+      window.addEventListener("load", verifyAdminSession);
 
       // ===== BOOKING SUBMIT =====
       function submitBooking() {
@@ -2887,16 +2918,58 @@
             return;
           }
 
-          const pass = passEl.value;
-          if (pass === ADMIN_PASS) {
-            loginScreenEl.classList.remove("active");
-            adminOverlayEl.classList.add("active");
-            passEl.value = "";
-            if (loginErrorEl) loginErrorEl.style.display = "none";
-            refreshAdmin();
-          } else {
-            if (loginErrorEl) loginErrorEl.style.display = "block";
+          const password = passEl.value;
+
+          if (!password) {
+            if (loginErrorEl) {
+              loginErrorEl.textContent = "Please enter a password";
+              loginErrorEl.style.display = "block";
+            }
+            return;
           }
+
+          // Show loading state
+          const loginBtn = event.target;
+          const originalText = loginBtn.textContent;
+          loginBtn.textContent = "Verifying...";
+          loginBtn.disabled = true;
+
+          // Send login request to server
+          fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: "admin", password: password })
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              loginBtn.textContent = originalText;
+              loginBtn.disabled = false;
+
+              if (data.success) {
+                adminSessionId = data.sessionId;
+                localStorage.setItem("egbon_sessionId", adminSessionId);
+                loginScreenEl.classList.remove("active");
+                adminOverlayEl.classList.add("active");
+                passEl.value = "";
+                if (loginErrorEl) loginErrorEl.style.display = "none";
+                refreshAdmin();
+              } else {
+                if (loginErrorEl) {
+                  loginErrorEl.textContent =
+                    data.message || "Invalid password. Try again.";
+                  loginErrorEl.style.display = "block";
+                }
+              }
+            })
+            .catch((error) => {
+              loginBtn.textContent = originalText;
+              loginBtn.disabled = false;
+              console.error("Login error:", error);
+              if (loginErrorEl) {
+                loginErrorEl.textContent = "Server error. Please try again.";
+                loginErrorEl.style.display = "block";
+              }
+            });
         } catch (error) {
           console.error("Error in doLogin:", error);
           alert("An error occurred during login. Please try again.");
@@ -2909,6 +2982,20 @@
           const loginScreen = document.getElementById("loginScreen");
           if (adminOverlay) adminOverlay.classList.remove("active");
           if (loginScreen) loginScreen.classList.remove("active");
+
+          // Logout from server
+          if (adminSessionId) {
+            fetch("/api/admin/logout", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId: adminSessionId })
+            })
+              .then((res) => res.json())
+              .catch((error) => console.error("Logout error:", error));
+
+            adminSessionId = null;
+            localStorage.removeItem("egbon_sessionId");
+          }
         } catch (error) {
           console.error("Error closing admin panel:", error);
         }
