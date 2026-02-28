@@ -2746,7 +2746,6 @@
     <script>
       // ===== DATA STORE =====
       let bookings = [];
-      const ADMIN_PASS = "egbon2025"; // Change this password!
       let adminSessionId = null; // Store session token instead of password
       let pendingAction = null;
 
@@ -2777,7 +2776,7 @@
             fetch("/api/admin/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ sessionId: adminSessionId })
+              body: JSON.stringify({ sessionId: adminSessionId }),
             })
               .then((res) => res.json())
               .then((data) => {
@@ -2938,7 +2937,7 @@
           fetch("/api/admin/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: "admin", password: password })
+            body: JSON.stringify({ username: "admin", password: password }),
           })
             .then((res) => res.json())
             .then((data) => {
@@ -2988,7 +2987,7 @@
             fetch("/api/admin/logout", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ sessionId: adminSessionId })
+              body: JSON.stringify({ sessionId: adminSessionId }),
             })
               .then((res) => res.json())
               .catch((error) => console.error("Logout error:", error));
