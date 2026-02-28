@@ -56,6 +56,7 @@
         background: rgba(28, 30, 34, 0.85);
         backdrop-filter: blur(16px);
         border-bottom: 1px solid rgba(111, 161, 204, 0.15);
+        flex-wrap: wrap;
       }
 
       .logo {
@@ -147,6 +148,82 @@
 
       nav ul a:hover {
         color: var(--azure);
+      }
+
+      .hamburger {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        z-index: 101;
+      }
+
+      .hamburger span {
+        width: 24px;
+        height: 2px;
+        background: var(--white);
+        transition: all 0.3s;
+      }
+
+      .hamburger.active span:nth-child(1) {
+        transform: rotate(45deg) translate(10px, 10px);
+      }
+
+      .hamburger.active span:nth-child(2) {
+        opacity: 0;
+      }
+
+      .hamburger.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -7px);
+      }
+
+      .mobile-nav-menu {
+        display: none;
+        position: fixed;
+        top: 70px;
+        left: 0;
+        right: 0;
+        background: rgba(28, 30, 34, 0.98);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(111, 161, 204, 0.15);
+        padding: 1.5rem;
+        z-index: 98;
+        width: 100%;
+      }
+
+      .mobile-nav-menu.active {
+        display: block;
+      }
+
+      .mobile-nav-menu ul {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        list-style: none;
+      }
+
+      .mobile-nav-menu a {
+        font-size: 0.9rem;
+        display: block;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(111, 161, 204, 0.1);
+        color: var(--gray-400);
+        text-decoration: none;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: color 0.3s;
+      }
+
+      .mobile-nav-menu a:hover {
+        color: var(--azure);
+      }
+
+      .mobile-nav-menu a:last-child {
+        border-bottom: none;
       }
 
       .nav-btn {
@@ -1078,28 +1155,15 @@
         text-transform: uppercase;
         padding: 0.3rem 0.8rem;
       }
-      from {
-        opacity: 0;
-        transform: translateY(24px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
 
       @media (max-width: 1024px) {
-        .pricing-grid { grid-template-columns: 1fr; max-width: 520px; margin-left: auto; margin-right: auto; }
-      }
-
-      @media (max-width: 768px) {
-        /* Nav */
-        nav { padding: 0.9rem 1.2rem; }
-        nav ul { display: none; }
-        .nav-btn {
-          display: block;
-          padding: 0.5rem 1rem;
-          font-size: 0.72rem;
+        .pricing-grid {
+          grid-template-columns: 1fr;
+          max-width: 520px;
+          margin-left: auto;
+          margin-right: auto;
         }
+      }
 
       @keyframes fadeUp {
         from {
@@ -1115,9 +1179,13 @@
       @media (max-width: 768px) {
         nav {
           padding: 1rem 1.5rem;
+          position: relative;
         }
         nav ul {
           display: none;
+        }
+        .hamburger {
+          display: flex;
         }
         .hero {
           padding: 0 1.5rem;
@@ -1256,7 +1324,26 @@
         <li><a href="#contact">Contact</a></li>
       </ul>
       <button class="nav-btn" onclick="openAdmin()">Admin</button>
+      <button
+        class="hamburger"
+        onclick="toggleMobileMenu()"
+        aria-label="Toggle navigation menu"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </nav>
+
+    <!-- Mobile Nav Menu -->
+    <div class="mobile-nav-menu" id="mobileNavMenu">
+      <ul>
+        <li><a href="#services" onclick="closeMobileMenu()">Services</a></li>
+        <li><a href="#concierge" onclick="closeMobileMenu()">Concierge</a></li>
+        <li><a href="#booking" onclick="closeMobileMenu()">Book</a></li>
+        <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
+      </ul>
+    </div>
 
     <!-- HERO -->
     <section class="hero">
@@ -2138,7 +2225,7 @@
             will respond promptly.
           </p>
           <a
-            href="https://wa.me/2348000000000"
+            href="https://wa.me/2349069067021"
             target="_blank"
             class="btn-primary"
             >Chat on WhatsApp</a
@@ -2658,132 +2745,234 @@
 
     <script>
       // ===== DATA STORE =====
-      let bookings = JSON.parse(localStorage.getItem("egbon_bookings") || "[]");
+      let bookings = [];
       const ADMIN_PASS = "egbon2025"; // Change this password!
       let pendingAction = null;
 
+      // Initialize bookings with error handling
+      try {
+        bookings = JSON.parse(localStorage.getItem("egbon_bookings") || "[]");
+      } catch (error) {
+        console.error("Error loading bookings from localStorage:", error);
+        bookings = [];
+      }
+
       function saveBookings() {
-        localStorage.setItem("egbon_bookings", JSON.stringify(bookings));
+        try {
+          localStorage.setItem("egbon_bookings", JSON.stringify(bookings));
+        } catch (error) {
+          console.error("Error saving bookings to localStorage:", error);
+          alert(
+            "Warning: Could not save booking data. LocalStorage may be disabled."
+          );
+        }
       }
 
       // ===== BOOKING SUBMIT =====
       function submitBooking() {
-        const name = document.getElementById("b-name").value.trim();
-        const phone = document.getElementById("b-phone").value.trim();
-        const service = document.getElementById("b-service").value;
-        const date = document.getElementById("b-date").value;
-        const time = document.getElementById("b-time").value;
-        const pickup = document.getElementById("b-pickup").value.trim();
-        const details = document.getElementById("b-details").value.trim();
+        try {
+          const nameEl = document.getElementById("b-name");
+          const phoneEl = document.getElementById("b-phone");
+          const serviceEl = document.getElementById("b-service");
+          const dateEl = document.getElementById("b-date");
+          const timeEl = document.getElementById("b-time");
+          const pickupEl = document.getElementById("b-pickup");
+          const detailsEl = document.getElementById("b-details");
 
-        if (!name || !phone || !service) {
-          alert(
-            "Please fill in your name, phone, and service type at minimum."
+          if (!nameEl || !phoneEl || !serviceEl) {
+            console.error("Form elements not found");
+            alert("Error: Form elements missing. Please refresh the page.");
+            return;
+          }
+
+          const name = nameEl.value.trim();
+          const phone = phoneEl.value.trim();
+          const service = serviceEl.value;
+          const date = dateEl ? dateEl.value : "";
+          const time = timeEl ? timeEl.value : "";
+          const pickup = pickupEl ? pickupEl.value.trim() : "";
+          const details = detailsEl ? detailsEl.value.trim() : "";
+
+          if (!name || !phone || !service) {
+            alert(
+              "Please fill in your name, phone, and service type at minimum."
+            );
+            return;
+          }
+
+          const booking = {
+            id: Date.now(),
+            name,
+            phone,
+            service,
+            date,
+            time,
+            pickup,
+            details,
+            status: "pending",
+            createdAt: new Date().toLocaleDateString(),
+          };
+
+          bookings.unshift(booking);
+          saveBookings();
+
+          // WhatsApp message
+          const msg = encodeURIComponent(
+            `*New Booking Request — Egbon & Co*\n\n` +
+              `👤 Name: ${name}\n` +
+              `📞 Phone: ${phone}\n` +
+              `🚘 Service: ${service}\n` +
+              `📅 Date: ${date || "TBD"}\n` +
+              `🕐 Time: ${time || "TBD"}\n` +
+              `📍 Pickup: ${pickup || "TBD"}\n` +
+              `📝 Details: ${details || "None"}\n\n` +
+              `Please confirm availability and payment.`
           );
-          return;
+
+          // Replace with your actual WhatsApp number
+          try {
+            window.open(`https://wa.me/2349069067021?text=${msg}`, "_blank");
+          } catch (error) {
+            console.error("Error opening WhatsApp:", error);
+            alert("Could not open WhatsApp, but your booking has been saved.");
+          }
+
+          // Reset form
+          [
+            "b-name",
+            "b-phone",
+            "b-date",
+            "b-time",
+            "b-pickup",
+            "b-details",
+          ].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+          });
+          const serviceSelect = document.getElementById("b-service");
+          if (serviceSelect) serviceSelect.value = "";
+
+          alert(
+            "Your booking request has been sent! We'll confirm via WhatsApp shortly."
+          );
+        } catch (error) {
+          console.error("Error in submitBooking:", error);
+          alert(
+            "An error occurred while processing your booking. Please try again."
+          );
         }
-
-        const booking = {
-          id: Date.now(),
-          name,
-          phone,
-          service,
-          date,
-          time,
-          pickup,
-          details,
-          status: "pending",
-          createdAt: new Date().toLocaleDateString(),
-        };
-
-        bookings.unshift(booking);
-        saveBookings();
-
-        // WhatsApp message
-        const msg = encodeURIComponent(
-          `*New Booking Request — Egbon & Co*\n\n` +
-            `👤 Name: ${name}\n` +
-            `📞 Phone: ${phone}\n` +
-            `🚘 Service: ${service}\n` +
-            `📅 Date: ${date || "TBD"}\n` +
-            `🕐 Time: ${time || "TBD"}\n` +
-            `📍 Pickup: ${pickup || "TBD"}\n` +
-            `📝 Details: ${details || "None"}\n\n` +
-            `Please confirm availability and payment.`
-        );
-
-        // Replace with your actual WhatsApp number
-        window.open(`https://wa.me/2349069067021?text=${msg}`, "_blank");
-
-        // Reset form
-        [
-          "b-name",
-          "b-phone",
-          "b-date",
-          "b-time",
-          "b-pickup",
-          "b-details",
-        ].forEach((id) => (document.getElementById(id).value = ""));
-        document.getElementById("b-service").value = "";
-
-        alert(
-          "Your booking request has been sent! We'll confirm via WhatsApp shortly."
-        );
       }
 
       // ===== ADMIN =====
       function openAdmin() {
-        document.getElementById("loginScreen").classList.add("active");
+        try {
+          const loginScreen = document.getElementById("loginScreen");
+          if (loginScreen) {
+            loginScreen.classList.add("active");
+          }
+        } catch (error) {
+          console.error("Error opening admin panel:", error);
+        }
       }
 
       function doLogin() {
-        const pass = document.getElementById("adminPassword").value;
-        if (pass === ADMIN_PASS) {
-          document.getElementById("loginScreen").classList.remove("active");
-          document.getElementById("adminOverlay").classList.add("active");
-          document.getElementById("adminPassword").value = "";
-          document.getElementById("loginError").style.display = "none";
-          refreshAdmin();
-        } else {
-          document.getElementById("loginError").style.display = "block";
+        try {
+          const passEl = document.getElementById("adminPassword");
+          const loginScreenEl = document.getElementById("loginScreen");
+          const adminOverlayEl = document.getElementById("adminOverlay");
+          const loginErrorEl = document.getElementById("loginError");
+
+          if (!passEl || !loginScreenEl || !adminOverlayEl) {
+            console.error("Login form elements not found");
+            return;
+          }
+
+          const pass = passEl.value;
+          if (pass === ADMIN_PASS) {
+            loginScreenEl.classList.remove("active");
+            adminOverlayEl.classList.add("active");
+            passEl.value = "";
+            if (loginErrorEl) loginErrorEl.style.display = "none";
+            refreshAdmin();
+          } else {
+            if (loginErrorEl) loginErrorEl.style.display = "block";
+          }
+        } catch (error) {
+          console.error("Error in doLogin:", error);
+          alert("An error occurred during login. Please try again.");
         }
       }
 
       function closeAdmin() {
-        document.getElementById("adminOverlay").classList.remove("active");
-        document.getElementById("loginScreen").classList.remove("active");
+        try {
+          const adminOverlay = document.getElementById("adminOverlay");
+          const loginScreen = document.getElementById("loginScreen");
+          if (adminOverlay) adminOverlay.classList.remove("active");
+          if (loginScreen) loginScreen.classList.remove("active");
+        } catch (error) {
+          console.error("Error closing admin panel:", error);
+        }
       }
 
       function showPanel(name, el) {
-        document
-          .querySelectorAll(".admin-panel")
-          .forEach((p) => p.classList.remove("active"));
-        document
-          .querySelectorAll(".sidebar-item")
-          .forEach((s) => s.classList.remove("active"));
-        document.getElementById("panel-" + name).classList.add("active");
-        el.classList.add("active");
+        try {
+          if (!name) return;
+          document
+            .querySelectorAll(".admin-panel")
+            .forEach((p) => p.classList.remove("active"));
+          document
+            .querySelectorAll(".sidebar-item")
+            .forEach((s) => s.classList.remove("active"));
+          const panel = document.getElementById("panel-" + name);
+          if (panel) panel.classList.add("active");
+          if (el) el.classList.add("active");
+        } catch (error) {
+          console.error("Error in showPanel:", error);
+        }
       }
 
       function refreshAdmin() {
-        bookings = JSON.parse(localStorage.getItem("egbon_bookings") || "[]");
-        updateStats();
-        renderBookings();
-        renderConcierge();
-        renderClients();
+        try {
+          try {
+            bookings = JSON.parse(
+              localStorage.getItem("egbon_bookings") || "[]"
+            );
+          } catch (parseError) {
+            console.error("Error parsing bookings:", parseError);
+            bookings = [];
+          }
+          updateStats();
+          renderBookings();
+          renderConcierge();
+          renderClients();
+        } catch (error) {
+          console.error("Error in refreshAdmin:", error);
+        }
       }
 
       function updateStats() {
-        document.getElementById("statTotal").textContent = bookings.length;
-        document.getElementById("statPending").textContent = bookings.filter(
-          (b) => b.status === "pending"
-        ).length;
-        document.getElementById("statConfirmed").textContent = bookings.filter(
-          (b) => b.status === "confirmed"
-        ).length;
-        document.getElementById("statCompleted").textContent = bookings.filter(
-          (b) => b.status === "completed"
-        ).length;
+        try {
+          const statTotal = document.getElementById("statTotal");
+          const statPending = document.getElementById("statPending");
+          const statConfirmed = document.getElementById("statConfirmed");
+          const statCompleted = document.getElementById("statCompleted");
+
+          if (statTotal) statTotal.textContent = bookings.length;
+          if (statPending)
+            statPending.textContent = bookings.filter(
+              (b) => b.status === "pending"
+            ).length;
+          if (statConfirmed)
+            statConfirmed.textContent = bookings.filter(
+              (b) => b.status === "confirmed"
+            ).length;
+          if (statCompleted)
+            statCompleted.textContent = bookings.filter(
+              (b) => b.status === "completed"
+            ).length;
+        } catch (error) {
+          console.error("Error in updateStats:", error);
+        }
       }
 
       function statusBadge(s) {
@@ -2797,176 +2986,270 @@
       }
 
       function renderBookings() {
-        const tbody = document.getElementById("bookingsBody");
-        const rides = bookings.filter((b) => b.service !== "Concierge Request");
-        if (!rides.length) {
-          tbody.innerHTML =
-            '<tr><td colspan="8" style="text-align:center;color:var(--gray-600);padding:2rem">No bookings yet</td></tr>';
-          return;
+        try {
+          const tbody = document.getElementById("bookingsBody");
+          if (!tbody) {
+            console.error("Bookings table body not found");
+            return;
+          }
+          const rides = bookings.filter(
+            (b) => b.service !== "Concierge Request"
+          );
+          if (!rides.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="8" style="text-align:center;color:var(--gray-600);padding:2rem">No bookings yet</td></tr>';
+            return;
+          }
+          tbody.innerHTML = rides
+            .map(
+              (b, i) => `
+        <tr>
+          <td style="color:var(--gray-400)">${i + 1}</td>
+          <td><strong>${
+            b.name
+          }</strong><br><span style="color:var(--gray-400);font-size:0.78rem">${
+                b.phone
+              }</span></td>
+          <td>${b.service}</td>
+          <td>${b.date || "—"}</td>
+          <td>${b.time || "—"}</td>
+          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis">${
+            b.pickup || "—"
+          }</td>
+          <td>${statusBadge(b.status)}</td>
+          <td>
+            ${
+              b.status === "pending"
+                ? `<button class="action-btn confirm" onclick="changeStatus(${b.id},'confirmed')">Confirm</button>`
+                : ""
+            }
+            ${
+              b.status === "confirmed"
+                ? `<button class="action-btn complete" onclick="changeStatus(${b.id},'completed')">Complete</button>`
+                : ""
+            }
+            ${
+              b.status !== "cancelled" && b.status !== "completed"
+                ? `<button class="action-btn cancel" onclick="changeStatus(${b.id},'cancelled')">Cancel</button>`
+                : ""
+            }
+          </td>
+        </tr>
+      `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error in renderBookings:", error);
         }
-        tbody.innerHTML = rides
-          .map(
-            (b, i) => `
-      <tr>
-        <td style="color:var(--gray-400)">${i + 1}</td>
-        <td><strong>${
-          b.name
-        }</strong><br><span style="color:var(--gray-400);font-size:0.78rem">${
-              b.phone
-            }</span></td>
-        <td>${b.service}</td>
-        <td>${b.date || "—"}</td>
-        <td>${b.time || "—"}</td>
-        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis">${
-          b.pickup || "—"
-        }</td>
-        <td>${statusBadge(b.status)}</td>
-        <td>
-          ${
-            b.status === "pending"
-              ? `<button class="action-btn confirm" onclick="changeStatus(${b.id},'confirmed')">Confirm</button>`
-              : ""
-          }
-          ${
-            b.status === "confirmed"
-              ? `<button class="action-btn complete" onclick="changeStatus(${b.id},'completed')">Complete</button>`
-              : ""
-          }
-          ${
-            b.status !== "cancelled" && b.status !== "completed"
-              ? `<button class="action-btn cancel" onclick="changeStatus(${b.id},'cancelled')">Cancel</button>`
-              : ""
-          }
-        </td>
-      </tr>
-    `
-          )
-          .join("");
       }
 
       function renderConcierge() {
-        const tbody = document.getElementById("conciergeBody");
-        const reqs = bookings.filter((b) => b.service === "Concierge Request");
-        if (!reqs.length) {
-          tbody.innerHTML =
-            '<tr><td colspan="6" style="text-align:center;color:var(--gray-600);padding:2rem">No concierge requests yet</td></tr>';
-          return;
+        try {
+          const tbody = document.getElementById("conciergeBody");
+          if (!tbody) {
+            console.error("Concierge table body not found");
+            return;
+          }
+          const reqs = bookings.filter(
+            (b) => b.service === "Concierge Request"
+          );
+          if (!reqs.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="6" style="text-align:center;color:var(--gray-600);padding:2rem">No concierge requests yet</td></tr>';
+            return;
+          }
+          tbody.innerHTML = reqs
+            .map(
+              (b, i) => `
+        <tr>
+          <td style="color:var(--gray-400)">${i + 1}</td>
+          <td><strong>${
+            b.name
+          }</strong><br><span style="color:var(--gray-400);font-size:0.78rem">${
+                b.phone
+              }</span></td>
+          <td style="max-width:200px">${b.details || "—"}</td>
+          <td>${b.date || "—"}</td>
+          <td>${statusBadge(b.status)}</td>
+          <td>
+            ${
+              b.status === "pending"
+                ? `<button class="action-btn confirm" onclick="changeStatus(${b.id},'confirmed')">Confirm</button>`
+                : ""
+            }
+            ${
+              b.status === "confirmed"
+                ? `<button class="action-btn complete" onclick="changeStatus(${b.id},'completed')">Complete</button>`
+                : ""
+            }
+            ${
+              b.status !== "cancelled" && b.status !== "completed"
+                ? `<button class="action-btn cancel" onclick="changeStatus(${b.id},'cancelled')">Cancel</button>`
+                : ""
+            }
+          </td>
+        </tr>
+      `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error in renderConcierge:", error);
         }
-        tbody.innerHTML = reqs
-          .map(
-            (b, i) => `
-      <tr>
-        <td style="color:var(--gray-400)">${i + 1}</td>
-        <td><strong>${
-          b.name
-        }</strong><br><span style="color:var(--gray-400);font-size:0.78rem">${
-              b.phone
-            }</span></td>
-        <td style="max-width:200px">${b.details || "—"}</td>
-        <td>${b.date || "—"}</td>
-        <td>${statusBadge(b.status)}</td>
-        <td>
-          ${
-            b.status === "pending"
-              ? `<button class="action-btn confirm" onclick="changeStatus(${b.id},'confirmed')">Confirm</button>`
-              : ""
-          }
-          ${
-            b.status === "confirmed"
-              ? `<button class="action-btn complete" onclick="changeStatus(${b.id},'completed')">Complete</button>`
-              : ""
-          }
-          ${
-            b.status !== "cancelled" && b.status !== "completed"
-              ? `<button class="action-btn cancel" onclick="changeStatus(${b.id},'cancelled')">Cancel</button>`
-              : ""
-          }
-        </td>
-      </tr>
-    `
-          )
-          .join("");
       }
 
       function renderClients() {
-        const tbody = document.getElementById("clientsBody");
-        const clientMap = {};
-        bookings.forEach((b) => {
-          if (!clientMap[b.phone])
-            clientMap[b.phone] = {
-              name: b.name,
-              phone: b.phone,
-              count: 0,
-              lastService: b.service,
-            };
-          clientMap[b.phone].count++;
-        });
-        const clients = Object.values(clientMap);
-        if (!clients.length) {
-          tbody.innerHTML =
-            '<tr><td colspan="4" style="text-align:center;color:var(--gray-600);padding:2rem">No clients yet</td></tr>';
-          return;
+        try {
+          const tbody = document.getElementById("clientsBody");
+          if (!tbody) {
+            console.error("Clients table body not found");
+            return;
+          }
+          const clientMap = {};
+          bookings.forEach((b) => {
+            if (!clientMap[b.phone])
+              clientMap[b.phone] = {
+                name: b.name,
+                phone: b.phone,
+                count: 0,
+                lastService: b.service,
+              };
+            clientMap[b.phone].count++;
+          });
+          const clients = Object.values(clientMap);
+          if (!clients.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="4" style="text-align:center;color:var(--gray-600);padding:2rem">No clients yet</td></tr>';
+            return;
+          }
+          tbody.innerHTML = clients
+            .map(
+              (c) => `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td>${c.phone}</td>
+          <td>${c.count}</td>
+          <td>${c.lastService}</td>
+        </tr>
+      `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error in renderClients:", error);
         }
-        tbody.innerHTML = clients
-          .map(
-            (c) => `
-      <tr>
-        <td><strong>${c.name}</strong></td>
-        <td>${c.phone}</td>
-        <td>${c.count}</td>
-        <td>${c.lastService}</td>
-      </tr>
-    `
-          )
-          .join("");
       }
 
       function changeStatus(id, newStatus) {
-        const labels = {
-          confirmed: "confirm",
-          completed: "mark as completed",
-          cancelled: "cancel",
-        };
-        showModal(
-          `${labels[newStatus]} this booking?`,
-          `This action will update the booking status to "${newStatus}".`,
-          () => {
-            const b = bookings.find((b) => b.id === id);
-            if (b) {
-              b.status = newStatus;
-              saveBookings();
-              refreshAdmin();
-            }
+        try {
+          if (!id || !newStatus) {
+            console.error("Invalid arguments to changeStatus");
+            return;
           }
-        );
+          const labels = {
+            confirmed: "confirm",
+            completed: "mark as completed",
+            cancelled: "cancel",
+          };
+          showModal(
+            `${labels[newStatus]} this booking?`,
+            `This action will update the booking status to "${newStatus}".`,
+            () => {
+              try {
+                const b = bookings.find((b) => b.id === id);
+                if (b) {
+                  b.status = newStatus;
+                  saveBookings();
+                  refreshAdmin();
+                }
+              } catch (error) {
+                console.error("Error updating booking status:", error);
+                alert("Error updating booking status. Please try again.");
+              }
+            }
+          );
+        } catch (error) {
+          console.error("Error in changeStatus:", error);
+        }
       }
 
       function showModal(title, text, onConfirm) {
-        document.getElementById("modalTitle").textContent = title;
-        document.getElementById("modalText").textContent = text;
-        document.getElementById("modalOverlay").classList.add("active");
-        pendingAction = onConfirm;
-        document.getElementById("modalConfirm").onclick = () => {
-          closeModal();
-          if (pendingAction) pendingAction();
-        };
+        try {
+          const modalTitle = document.getElementById("modalTitle");
+          const modalText = document.getElementById("modalText");
+          const modalOverlay = document.getElementById("modalOverlay");
+          const modalConfirm = document.getElementById("modalConfirm");
+
+          if (modalTitle) modalTitle.textContent = title;
+          if (modalText) modalText.textContent = text;
+          if (modalOverlay) modalOverlay.classList.add("active");
+          pendingAction = onConfirm;
+          if (modalConfirm) {
+            modalConfirm.onclick = () => {
+              closeModal();
+              if (pendingAction) {
+                try {
+                  pendingAction();
+                } catch (error) {
+                  console.error("Error executing pending action:", error);
+                }
+              }
+            };
+          }
+        } catch (error) {
+          console.error("Error in showModal:", error);
+        }
       }
 
       function closeModal() {
-        document.getElementById("modalOverlay").classList.remove("active");
-        pendingAction = null;
+        try {
+          const modalOverlay = document.getElementById("modalOverlay");
+          if (modalOverlay) modalOverlay.classList.remove("active");
+          pendingAction = null;
+        } catch (error) {
+          console.error("Error closing modal:", error);
+        }
+      }
+
+      // Mobile Menu Toggle
+      function toggleMobileMenu() {
+        try {
+          const hamburger = document.querySelector(".hamburger");
+          const mobileMenu = document.getElementById("mobileNavMenu");
+          if (hamburger) hamburger.classList.toggle("active");
+          if (mobileMenu) mobileMenu.classList.toggle("active");
+        } catch (error) {
+          console.error("Error in toggleMobileMenu:", error);
+        }
+      }
+
+      function closeMobileMenu() {
+        try {
+          const hamburger = document.querySelector(".hamburger");
+          const mobileMenu = document.getElementById("mobileNavMenu");
+          if (hamburger) hamburger.classList.remove("active");
+          if (mobileMenu) mobileMenu.classList.remove("active");
+        } catch (error) {
+          console.error("Error in closeMobileMenu:", error);
+        }
       }
 
       // Smooth scroll
-      document.querySelectorAll('a[href^="#"]').forEach((a) => {
-        a.addEventListener("click", (e) => {
-          const target = document.querySelector(a.getAttribute("href"));
-          if (target) {
-            e.preventDefault();
-            target.scrollIntoView({ behavior: "smooth" });
-          }
+      try {
+        document.querySelectorAll('a[href^="#"]').forEach((a) => {
+          a.addEventListener("click", (e) => {
+            try {
+              const target = document.querySelector(a.getAttribute("href"));
+              if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: "smooth" });
+              }
+            } catch (error) {
+              console.error("Error in smooth scroll:", error);
+            }
+          });
         });
-      });
+      } catch (error) {
+        console.error("Error setting up smooth scroll:", error);
+      }
     </script>
   </body>
 </html>
